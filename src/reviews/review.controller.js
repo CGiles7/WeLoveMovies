@@ -1,4 +1,4 @@
-const service = require("./reviews.service");
+const service = require("./review.service");
 const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
 const reduceProperties = require("../utils/reduce-properties");
 
