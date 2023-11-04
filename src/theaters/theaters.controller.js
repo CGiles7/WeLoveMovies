@@ -15,18 +15,38 @@ const reduceMoviesTheaters = {
 }
 
 async function list(req, res, next) {
-    const {movieId} = req.params;
-    if(movieId) {
-        const data = await service.listWithId(movieId);
-        res.json({ data });
-    } else {
-        let data = await service.list();
-        const reducer = reduceProperties("theater_id", reduceMoviesTheaters);
-        data = reducer(data);
-        res.json({ data });
-    }
+    const data = await service.list();
+
+    const theatersWithMovies = data.map(theater => {
+        return {
+            theater_id: theater.theater_id,
+            name: theater.name,
+            address_line_1: theater.address_line_1,
+            address_line_2: theater.address_line_2,
+            city: theater.city,
+            state: theater.state,
+            zip: theater.zip,
+            created_at: theater.created_at,
+            updated_at: theater.updated_at,
+            movies: theater.movies.map(movie => {
+                return {
+                    movie_id: movie.movie_id,
+                    title: movie.title,
+                    runtime_in_minutes: movie.runtime_in_minutes,
+                    rating: movie.rating,
+                    description: movie.description,
+                    image_url: movie.image_url,
+                    created_at: movie.created_at,
+                    updated_at: movie.updated_at,
+                    is_showing: movie.is_showing,
+                };
+            }),
+        };
+    });
+
+    res.json({ data: theatersWithMovies });
 }
 
 module.exports = {
-    list:asyncErrorBoundary(list)
-}
+    list: asyncErrorBoundary(list)
+};

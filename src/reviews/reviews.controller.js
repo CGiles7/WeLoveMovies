@@ -1,4 +1,4 @@
-const service = require("./review.service");
+const service = require("./reviews.service");
 const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
 const reduceProperties = require("../utils/reduce-properties");
 
@@ -7,7 +7,7 @@ const reducedTheaterMovies1 = {
     preferred_name: ["critic", "preferred_name"],
     surname: ["critic", "surname"],
     organization_name: ["critic", "organization_name"],
-    update_at: ["critic", "updated_at"],
+    updated_at: ["critic", "updated_at"], // Corrected the typo
 };
 
 const reducedTheaterMovies2 = {
@@ -17,23 +17,24 @@ const reducedTheaterMovies2 = {
 };
 
 async function reviewExists(req, res, next) {
-    const {reviewId} = req.parms;
+    const { reviewId } = req.params; // Corrected the typo
     const data = await service.readReview(reviewId);
-    if(data) {
+
+    if (data) {
         res.locals.review = data;
         return next();
     }
-    return next({status:404, message:'Cannot find review'});
+    return next({ status: 404, message: 'Cannot find review' });
 }
 
 async function list(req, res, next) {
-    const {movieId} = req.parms;
-    if(movieId) {
+    const { movieId } = req.params; // Corrected the typo
+    if (movieId) {
         let data = await service.read(movieId);
         const reducer = reduceProperties("review_id", reducedTheaterMovies1);
         data = reducer(data);
         res.json({ data });
-    } else  {
+    } else {
         const data = await service.list();
         res.json({ data });
     }
@@ -45,20 +46,21 @@ async function update(req, res, next) {
         ...req.body.data,
         review_id: res.locals.review.review_id,
     };
-    let data = await service.update(updatedReview);
-    const reduce = reduceProperties("review_id", reducedTheaterMovies2);
-    data = reducer(data);
-    res.json({ data });
+    const data = await service.update(updatedReview);
+    const reducer = reduceProperties("review_id", reducedTheaterMovies2);
+    const updatedData = reducer(data); // Corrected the variable name
+
+    res.json({ data: updatedData }); // Ensure the response format
 }
 
 async function destroy(req, res, next) {
-    const {review_id} = res.locals.review;
-    const data = await service.delete(review_id);
-    res.status(204).json({});
+    const { review_id } = res.locals.review;
+    await service.delete(review_id);
+    res.status(204).json();
 }
 
 module.exports = {
     list: asyncErrorBoundary(list),
     update: [asyncErrorBoundary(reviewExists), asyncErrorBoundary(update)],
     delete: [asyncErrorBoundary(reviewExists), asyncErrorBoundary(destroy)],
-}
+};

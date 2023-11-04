@@ -2,23 +2,23 @@ const service = require("./movies.service");
 const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
 
 async function movieExists(req, res, next) {
-    const {movieId} = req.params;
-    const adta = await service.read(movieId);
+    const { movieId } = req.params;
+    const data = await service.read(movieId); // Fix the typo
     if (data) {
         res.locals.movie = data;
         return next();
     }
-    return next({status:404, message:'Cannot find movie.'})
+    return next({ status: 404, message: 'Cannot find movie.' });
 }
 
 async function list(req, res, next) {
     const isShowing = req.query.is_showing;
-    if(isShowing) {
+    if (isShowing) {
         const data = await service.listMoviesShowing();
-        res.json({ data });
+        res.json({ data }); // Send response directly using res.json
     } else {
         const data = await service.list();
-        res.json({ data });
+        res.json({ data }); // Send response directly using res.json
     }
 }
 

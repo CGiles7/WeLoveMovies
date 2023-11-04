@@ -31,7 +31,14 @@ function update(updatedReview) {
 }
 
 function destroy(review_id) {
-    return knex("reviews").where({review_id}).del();
+    return knex("reviews")
+        .where({ review_id })
+        .del()
+        .then((rowCount) => {
+            if (rowCount === 0) {
+                throw { status: 404, message: "Review cannot be found." };
+            }
+        });
 }
 
 module.exports = {
