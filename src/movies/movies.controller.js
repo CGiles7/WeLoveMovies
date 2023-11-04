@@ -14,14 +14,14 @@ async function movieExists(req, res, next) {
 async function list(req, res, next) {
     const isShowing = req.query.is_showing;
 
-    if (isShowing === 'true') {
+    if (isShowing === true) {
         const data = await service.listMoviesShowing();
         res.json({ data });
     } else {
         const data = await service.list();
         res.json({ data });
     }
-} 
+}
 
 async function read(req, res, next) {
     const {movieId} = req.params;
