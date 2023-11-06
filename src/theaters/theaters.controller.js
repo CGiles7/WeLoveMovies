@@ -1,4 +1,4 @@
-const service = require("./theater.service");
+const service = require("./theaters.service");
 const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
 const reduceProperties = require("../utils/reduce-properties");
 
