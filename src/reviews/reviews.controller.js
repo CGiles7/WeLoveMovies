@@ -1,66 +1,90 @@
 const service = require("./reviews.service");
-const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
-const reduceProperties = require("../utils/reduce-properties");
+const asyncErrorBoundary = require("../errors/asyncErrorBoundary")
+const methodNotAllowed = require("../errors/methodNotAllowed")
 
-const reducedTheaterMovies1 = {
-    critic_id: ["critic", "critic_id"],
-    preferred_name: ["critic", "preferred_name"],
-    surname: ["critic", "surname"],
-    organization_name: ["critic", "organization_name"],
-    updated_at: ["critic", "updated_at"], // Corrected the typo
-};
+const VALID_REVIEW = [
+    "content",
+    "score",
+    "movie_id",
+    "critic_id"
+]
 
-const reducedTheaterMovies2 = {
-    preferred_name: ["critic", "preferred_name"],
-    surname: ["critic", "surname"],
-    organization_name: ["critic", "organization_name"],
-};
+async function list(req, res) {
+    const {movieId} = req.params;
+    const reviewData = await service.list(movieId)
+    res.json({ data: reviewData })
+}
+
+function read(req, res) {
+    res.json({ data: res.locals.review })
+}
+
+async function validReview(req, res, next) {
+    const newReview = req.body.data
+    const invalidReviewProperties = Object.keys(newReview).filter((key)=> !VALID_REVIEW.includes(key))
+    if (invalidReviewProperties.length) {
+        return next({
+            status: 400,
+            message: `Invalid Review Field(s): ${invalidReviewProperties.join(", ")}`
+        })
+    }
+    const review = await service.create(newReview)
+    res.locals.review = review;
+    next()
+}
+
+async function create(req, res) {
+    const newReview = await service.create(res.locals.review)
+    res.json({ data: newReview })
+}
 
 async function reviewExists(req, res, next) {
-    const { reviewId } = req.params; // Corrected the typo
-    const data = await service.readReview(reviewId);
-
-    if (data) {
-        res.locals.review = data;
-        return next();
+    const {reviewId} = req.params;
+    const reviewNumber = Number(reviewId)
+    const review = await service.read(reviewNumber)
+    if (review) {
+        res.locals.reviewId = reviewNumber;
+        res.locals.review = review;
+        return next()
     }
-    return next({ status: 404, message: 'Cannot find review' });
+    next({
+        status: 404,
+        message: `The Review With Id${reviewId} Cannot Be Found.`
+    })
 }
 
-async function list(req, res, next) {
-    const { movieId } = req.params; // Corrected the typo
-    if (movieId) {
-        let data = await service.read(movieId);
-        const reducer = reduceProperties("review_id", reducedTheaterMovies1);
-        data = reducer(data);
-        res.json({ data });
-    } else {
-        const data = await service.list();
-        res.json({ data });
-    }
-}
-
-async function update(req, res, next) {
+async function update(req, res) {
+    const {review} = res.locals
     const updatedReview = {
         ...res.locals.review,
         ...req.body.data,
-        review_id: res.locals.review.review_id,
-    };
-    const data = await service.update(updatedReview);
-    const reducer = reduceProperties("review_id", reducedTheaterMovies2);
-    const updatedData = reducer(data); // Corrected the variable name
-
-    res.json({ data: updatedData }); // Ensure the response format
+        review_id: res.locals.review.review_id
+    }
+    const response = await service.update(updatedReview)
+    res.json({ data: response })
 }
 
-async function destroy(req, res, next) {
-    const { review_id } = res.locals.review;
-    await service.delete(review_id);
-    res.status(204).json();
+async function destroy(req, res) {
+    const response = await service.destroy(res.locals.reviewId)
+    res.status(204).json({ data: response })
+}
+
+function noMovieId(req, res, next) {
+    if (req.params.movieId) {
+        return methodNotAllowed(req, res, next)
+    }
+    next()
+}
+function containsMovieId(req, res, next) {
+    if (req.params.movieId) {
+    return next()
+    }
+    methodNotAllowed(req, res, next)
 }
 
 module.exports = {
-    list: asyncErrorBoundary(list),
-    update: [asyncErrorBoundary(reviewExists), asyncErrorBoundary(update)],
-    delete: [asyncErrorBoundary(reviewExists), asyncErrorBoundary(destroy)],
-};
+    list: [containsMovieId, asyncErrorBoundary(list)],
+    read: [reviewExists, read],
+    update: [noMovieId, asyncErrorBoundary(reviewExists), asyncErrorBoundary(update)],
+    delete: [noMovieId, asyncErrorBoundary(reviewExists), asyncErrorBoundary(destroy)]
+}

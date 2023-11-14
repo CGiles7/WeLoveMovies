@@ -1,50 +1,45 @@
 const knex = require("../db/connection");
+const reduceProperties = require("../utils/reduce-properties")
+const mapProperties = require("../utils/map-properties");
 
-function list() {
-    return knex("reviews").select("*");
+async function readCritic(critic_id) {
+  return knex("critics").where({ critic_id }).first()
 }
 
-function read(movieId) {
-    return knex("reviews as r")
-        .select("*")
-        .join("critics as c", "r.critic_id", "=", "c.critic_id")
-        .where("r.movie_id", Number(movieId));
+async function list(movie_id) {
+  return knex("reviews").where({ movie_id }).then((reviews) => Promise.all(reviews.map(addCritic)))
 }
 
-function readReview(reviewId) {
-    return knex("reviews as r")
-        .select("*")
-        .where("r.review_id", Number(reviewId))
-        .first();
+async function addCritic(review) {
+  review.critic = await readCritic(review.critic_id) 
+  return review;
 }
 
-function update(updatedReview) {
-    return knex("reviews as r")
-        .where({review_id: updatedReview.review_id})
-        .update(updatedReview)
-        .then(() => {
-            return knex("reviews as r")
-                .join("critics as c", "r.critic_id", "c.critic_id")
-                .select(["r.*", "c.*"])
-                .where("r.review_id", updatedReview.review_id);
-        });
+async function update(review) {
+  return knex("reviews")
+    .where({ review_id: review.review_id })
+    .update(review)
+    .returning("*")
+    .then(() => read(review.review_id))
+    .then(addCritic);
 }
 
-function destroy(review_id) {
+function read(reviewId) {
     return knex("reviews")
-        .where({ review_id })
-        .del()
-        .then((rowCount) => {
-            if (rowCount === 0) {
-                throw { status: 404, message: "Review cannot be found." };
-            }
-        });
+      .select("*")
+      .where({review_id: reviewId})
+      .first()
+}
+
+function destroy(reviewId) {
+    return knex('reviews')
+      .where({"review_id": reviewId})
+      .del()
 }
 
 module.exports = {
-    list, 
+    list,
     read,
-    readReview,
     update,
-    delete:destroy,
+    destroy
 }
